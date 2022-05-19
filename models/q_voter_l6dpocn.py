@@ -4,7 +4,7 @@ import numpy as np
 
 
 class QVoter:
-    """ q-voter model with NN influence group. """
+    """ q_a-voter model with NN influence group. """
 
     def __init__(self, init_network: nx.Graph):
         self.init_network = init_network
@@ -34,7 +34,7 @@ class QVoter:
             type_of_influence (str): type of choice of the influence group.
         """
         if type_of_influence == 'NN':
-            # 'q randomly chosen nearest neighbours of the target spinson are in the group.'
+            # 'q_a randomly chosen nearest neighbours of the target spinson are in the group.'
             return np.random.choice([neighbour for neighbour in self.operating_network.neighbors(spinson)], q)
         else:
             # in the future there may be other ways of choice implemented as well
@@ -67,7 +67,7 @@ class QVoter:
         else:
             # (4) if not independent, let the spinson take the opinion of its randomly chosen group of influence.
             influence_group = self.influence_choice(spinson, q, type_of_influence)
-            # only if the q-panel is unanimous
+            # only if the q_a-panel is unanimous
             if self.unanimous_check(influence_group):
                 self.operating_opinion[spinson] = self.operating_opinion[list(influence_group)[0]]
             # TODO: there could be also a part from original model, but it's not part of this model:
