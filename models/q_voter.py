@@ -11,7 +11,7 @@ class QVoter:
 
     def __init__(self, init_network: nx.Graph):
         self.init_network = init_network
-        self.network_size = init_network.size()
+        self.network_size = init_network.number_of_nodes()
 
         self.operating_network = None
         self.operating_opinion = None
@@ -21,9 +21,34 @@ class QVoter:
         """ Operating network is needed for Monte Carlo trajectories. """
         self.operating_network = copy(self.init_network)
 
-    def reload_operating_opinion(self):
+    def reload_operating_opinion(self, init_type: str = "disordered_exact_fraction", *args, **kwargs):
         """ Method initializing opinion of the spinsons to 1. In future this could be changed and improved. """
-        self.operating_opinion = {node: 1 for node in self.init_network.nodes}
+        if init_type == "disordered_exact_fraction":
+            self.operating_opinion = self.create_opinion_exact_fraction(*args, **kwargs)
+        elif init_type == "p_for_positive":
+            self.operating_opinion = self.create_opinion_according_to_p(*args, **kwargs)
+        elif init_type == "all_positive":
+            self.operating_opinion = {node: 1 for node in self.init_network.nodes}
+        elif init_type == "all_negative":
+            self.operating_opinion = {node: -1 for node in self.init_network.nodes}
+        else:
+            raise NotImplementedError
+
+    def create_opinion_according_to_p(self, c: float = 0.5) -> dict:
+        """ Function creating vector of opinions according to p for 1 """
+        return {node: np.random.choice((-1, 1), p=(c, 1-c)) for node in self.init_network.nodes}
+
+    def create_opinion_exact_fraction(self, c: float = 0.5) -> dict:
+        """ Function creating vector of opinions according to p for 1 """
+        frac = round(self.network_size * c)
+
+        positive_nodes = np.random.choice(self.init_network.nodes, frac, replace=False)
+
+        positive_opinions = {node: 1 for node in positive_nodes}
+        negative_opinions = {node: -1 for node in self.init_network.nodes if node not in positive_nodes}
+
+        # FYI from Python 3.9 '|' operator merges 2 dictionaries. Doesn't work for lists :/
+        return positive_opinions | negative_opinions
 
     def reload_operating_magnetization(self):
         self.operating_magnetization = []
@@ -39,8 +64,11 @@ class QVoter:
 
         if type_of_influence == 'RND_no_repetitions':
             # 'q randomly chosen nearest neighbours of the target spinson are in the group. No repetitions.'
-            return list(
-                set(np.random.choice([neighbour for neighbour in self.operating_network.neighbors(spinson)], q)))
+            neighbours = [neighbour for neighbour in self.operating_network.neighbors(spinson)]
+            if len(neighbours) < q:
+                return neighbours
+            else:
+                return np.random.choice(neighbours, q, replace=False)
         elif type_of_influence == 'NN':
             # 'q randomly chosen nearest neighbours of the target spinson are in the group.'
             return np.random.choice([neighbour for neighbour in self.operating_network.neighbors(spinson)], q)
@@ -102,7 +130,8 @@ class QVoter:
 
     def simulate_until_stable(self, min_iterations: int, ma_value: int, p: float, q_a: int, q_c,
                               type_of_influence: str = 'RND_no_repetitions',
-                              max_iterations: Optional[int] = 10 ** 5) -> tuple[list, int]:
+                              max_iterations: Optional[int] = 10 ** 5, opinion_init: str = "disordered_exact_fraction",
+                              *args, **kwargs) -> tuple[list, int, float]:
         """ Method simulating the opinion spread. Simulates it until <max_iterations> iterations. From min_iterations
             algorithm compares actual value with MA(<ma_value>) previous values*. MA stands for moving average.
             For optimization purposes, check is done once a <ma_value_iterations>
@@ -120,8 +149,9 @@ class QVoter:
         Returns:
             (list): magnetization
             (int): number of iterations
+            (float): global concentration
         """
-        self.initialize_simulation()
+        self.initialize_simulation(opinion_init, *args, **kwargs)
 
         num_of_iter = 0
         iter_from_last_check = 0
@@ -143,8 +173,12 @@ class QVoter:
 
             if num_of_iter >= max_iterations:
                 break
+        concentration = self.calculate_global_concentration()
+        return self.operating_magnetization, num_of_iter, concentration
 
-        return self.operating_magnetization, num_of_iter
+    def calculate_global_concentration(self):
+        """ Method calculating global concentration. Positive/all"""
+        return len([opinion for opinion in self.operating_opinion.values() if opinion == 1])/len(self.operating_opinion)
 
     def calculate_magnetization(self):
         """ Method calculating magnetization. """
@@ -154,12 +188,12 @@ class QVoter:
         """ Method updating magnetization list with current magnetization. """
         self.operating_magnetization.append(self.calculate_magnetization())
 
-    def initialize_simulation(self):
+    def initialize_simulation(self, opinion_init: str = "disordered_exact_fraction", *args, **kwargs):
         """ Method initializing operating values, i.e. clearing them. """
         # cleaning operating network
         self.reload_operating_network()
         # cleaning operating opinion
-        self.reload_operating_opinion()
+        self.reload_operating_opinion(opinion_init, *args, **kwargs)
         # cleaning magnetization
         self.reload_operating_magnetization()
 
@@ -169,11 +203,13 @@ if __name__ == "__main__":
     n = 100
     m = 2
     network = nx.watts_strogatz_graph(100,4,0.02)
-    # print(network)
 
     q_voter = QVoter(network)
 
-    mag, len_mag = q_voter.simulate_until_stable(min_iterations=1000, max_iterations=100000, ma_value=100, p=0.1, q_a=3, q_c=4)
-    print(mag, len_mag)
+    mag, len_mag, concentration = q_voter.simulate_until_stable(min_iterations=1000, max_iterations=1000000, ma_value=1000, p=0.01, q_a=3,
+                                                 q_c=4, c=0.75)
+    print(f'len_mag = {len_mag}, concentration = {concentration}')
     plt.scatter(np.linspace(1, len_mag, len_mag), mag, s=10)
+    plt.xlabel('number of iteration')
+    plt.ylabel('magnetization')
     plt.show()
