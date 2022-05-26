@@ -1,17 +1,20 @@
 import networkx as nx
+import networkit as nk
 from copy import copy
 import numpy as np
 from typing import Optional
 
 from matplotlib import pyplot as plt
+from joblib import Parallel, delayed
+
 
 
 class QVoter:
     """ q_a-voter model with NN influence group. """
 
-    def __init__(self, init_network: nx.Graph):
+    def __init__(self, init_network: nk.Graph):
         self.init_network = init_network
-        self.network_size = init_network.number_of_nodes()
+        self.network_size = init_network.numberOfNodes()
 
         self.operating_network = None
         self.operating_opinion = None
@@ -28,24 +31,24 @@ class QVoter:
         elif init_type == "p_for_positive":
             self.operating_opinion = self.create_opinion_according_to_p(*args, **kwargs)
         elif init_type == "all_positive":
-            self.operating_opinion = {node: 1 for node in self.init_network.nodes}
+            self.operating_opinion = {node: 1 for node in self.init_network.iterNodes()}
         elif init_type == "all_negative":
-            self.operating_opinion = {node: -1 for node in self.init_network.nodes}
+            self.operating_opinion = {node: -1 for node in self.init_network.iterNodes()}
         else:
             raise NotImplementedError
 
     def create_opinion_according_to_p(self, c: float = 0.5) -> dict:
         """ Function creating vector of opinions according to p for 1 """
-        return {node: np.random.choice((-1, 1), p=(c, 1-c)) for node in self.init_network.nodes}
+        return {node: np.random.choice((-1, 1), p=(c, 1-c)) for node in self.init_network.iterNodes()}
 
     def create_opinion_exact_fraction(self, c: float = 0.5) -> dict:
         """ Function creating vector of opinions according to p for 1 """
         frac = round(self.network_size * c)
 
-        positive_nodes = np.random.choice(self.init_network.nodes, frac, replace=False)
+        positive_nodes = np.random.choice(list(self.init_network.iterNodes()), frac, replace=False)
 
         positive_opinions = {node: 1 for node in positive_nodes}
-        negative_opinions = {node: -1 for node in self.init_network.nodes if node not in positive_nodes}
+        negative_opinions = {node: -1 for node in self.init_network.iterNodes() if node not in positive_nodes}
 
         # FYI from Python 3.9 '|' operator merges 2 dictionaries. Doesn't work for lists :/
         return positive_opinions | negative_opinions
@@ -64,14 +67,14 @@ class QVoter:
 
         if type_of_influence == 'RND_no_repetitions':
             # 'q randomly chosen nearest neighbours of the target spinson are in the group. No repetitions.'
-            neighbours = [neighbour for neighbour in self.operating_network.neighbors(spinson)]
+            neighbours = [neighbour for neighbour in self.operating_network.iterNeighbors(spinson)]
             if len(neighbours) < q:
                 return neighbours
             else:
                 return np.random.choice(neighbours, q, replace=False)
         elif type_of_influence == 'NN':
             # 'q randomly chosen nearest neighbours of the target spinson are in the group.'
-            return np.random.choice([neighbour for neighbour in self.operating_network.neighbors(spinson)], q)
+            return np.random.choice([neighbour for neighbour in self.operating_network.iterNeighbors(spinson)], q)
         else:
             # in the future there may be other ways of choice implemented as well
             raise NotImplementedError
@@ -93,7 +96,7 @@ class QVoter:
             type_of_influence (str): type of choice of the influence group.
         """
         # (1) 'pick a spinson at random'
-        spinson = np.random.choice(self.operating_network.nodes, 1)[0]
+        spinson = np.random.choice(list(self.operating_network.iterNodes()), 1)[0]
 
         # (2) 'decide with probability p, if the spinson will act as independent
         if np.random.random() < p:
@@ -141,7 +144,7 @@ class QVoter:
             min_iterations (int): minimal number of iterations
             ma_value (int): number of values to compare with actual value
             eps (int): difference between actual value and (moving) average of <ma_value> previous values
-            p (flaot): 0 <= p <= 1. Probability for spinson to be independent
+            p (float): 0 <= p <= 1. Probability for spinson to be independent
             q_a (int): number of people in the influence group for independent spinson (anticonformity case)
             q_c (int): number of people in the influence group for not independent spinson (conformity case)
             type_of_influence (str): type of choice of the influence group.
@@ -197,19 +200,92 @@ class QVoter:
         # cleaning magnetization
         self.reload_operating_magnetization()
 
+    def monte_carlo_for_given_p(self, prob, mc_steps=10):
+        """Method calculating concentration for given p.
+
+        Args:
+            prob: probability for given step
+            mc_steps (int, optional): number of Monte Carlo iterations. Defaults to 10.
+
+        Returns:
+            float: mean value of concentration for given p
+        """
+        c = []
+        with open('c50.txt', 'a') as c_file:  
+            for i in range(mc_steps):
+                mag, len_mag, concentration = self.simulate_until_stable(min_iterations=1000, max_iterations=100000, ma_value=1000, p=prob, q_a=4, q_c=10, c=1)
+                c.append(concentration)
+
+                c_file.write(str(prob) + ' ' + str(concentration) + '\n')
+
+                print(prob, concentration)
+
+        return np.mean(c)
+
 
 if __name__ == "__main__":
-    """ simple check of methods."""
-    n = 100
-    m = 2
-    network = nx.watts_strogatz_graph(100,4,0.02)
+    # number of nodes
+    n = 1000
+    # average degree
+    k = 50
+    # probability. For Erdos Renyi <k> = np
+    p = k/n
+
+    network = nk.generators.ErdosRenyiGenerator(n, p)
+    network = network.generate()
+
+    # as in the article
+    probs = np.linspace(0, 0.07, 24)
 
     q_voter = QVoter(network)
 
-    mag, len_mag, concentration = q_voter.simulate_until_stable(min_iterations=1000, max_iterations=1000000, ma_value=1000, p=0.01, q_a=3,
-                                                 q_c=4, c=0.75)
-    print(f'len_mag = {len_mag}, concentration = {concentration}')
-    plt.scatter(np.linspace(1, len_mag, len_mag), mag, s=10)
-    plt.xlabel('number of iteration')
-    plt.ylabel('magnetization')
-    plt.show()
+    r = Parallel(n_jobs=8, verbose=10)(delayed(q_voter.monte_carlo_for_given_p)(p) for p in probs)
+
+    # """ simple check of methods."""
+    # n = 100000
+    # p = 150/n
+    # network = nx.fast_gnp_random_graph(n, p)
+
+    # mc_steps = 10
+    # ps = np.linspace(0, 1, 25)
+
+    # q_voter = QVoter(network)
+
+    # final_concentrations = []
+    # final_magnetizations = []
+
+    # for prob in ps:
+    #     print(prob)
+    #     c = []
+    #     m = []
+    #     for i in range(mc_steps):
+    #         print(i)
+    #         mag, len_mag, concentration = q_voter.simulate_until_stable(min_iterations=1000, 
+    #                              max_iterations=1000000, ma_value=1000, 
+    #                               p=prob, q_a=3, q_c=4, c=1)
+    #         c.append(concentration)
+    #         m.append(mag)
+
+    #     print(np.mean(c))
+    #     print(np.mean(m))
+
+    #     final_concentrations.append(np.mean(c))
+    #     final_magnetizations.append(np.mean(m))
+
+    # final_concentration_array = np.array(final_concentrations)
+    # final_magnetizations_array = np.array(final_magnetizations)
+
+    # np.savetxt('concentration.txt', final_concentration_array)
+    # np.savetxt('magnetization.txt', final_magnetizations)
+
+    # plt.scatter(ps, final_concentrations)
+    # plt.xlabel("p")
+    # plt.ylabel("C(s, t)")
+    # plt.title("C_0 = 0")
+    # plt.show()
+
+    # print(f'len_mag = {len_mag}, concentration = {concentration}')
+    # plt.scatter(np.linspace(1, len_mag, len_mag), mag, s=10)
+    # plt.xlabel('number of iteration')
+    # plt.ylabel('magnetization')
+    # plt.show()
