@@ -200,7 +200,7 @@ class QVoter:
         # cleaning magnetization
         self.reload_operating_magnetization()
 
-    def monte_carlo_for_given_p(self, prob, mc_steps=10):
+    def monte_carlo_for_given_p(self, prob, mc_steps=10, q_a=4, q_c=10, c_0=1):
         """Method calculating concentration for given p.
 
         Args:
@@ -213,7 +213,7 @@ class QVoter:
         c = []
         with open('c50.txt', 'a') as c_file:  
             for i in range(mc_steps):
-                mag, len_mag, concentration = self.simulate_until_stable(min_iterations=1000, max_iterations=100000, ma_value=1000, p=prob, q_a=4, q_c=10, c=1)
+                mag, len_mag, concentration = self.simulate_until_stable(min_iterations=1000, max_iterations=100000, ma_value=1000, p=prob, q_a=q_a, q_c=q_c, c=c_0)
                 c.append(concentration)
 
                 c_file.write(str(prob) + ' ' + str(concentration) + '\n')
@@ -230,6 +230,11 @@ if __name__ == "__main__":
     k = 50
     # probability. For Erdos Renyi <k> = np
     p = k/n
+    # group of anticonformity
+    q_a = 13
+    q_c = 10
+    # initial concentration of opinion
+    c_0=1
 
     network = nk.generators.ErdosRenyiGenerator(n, p)
     network = network.generate()
@@ -239,7 +244,7 @@ if __name__ == "__main__":
 
     q_voter = QVoter(network)
 
-    r = Parallel(n_jobs=8, verbose=10)(delayed(q_voter.monte_carlo_for_given_p)(p) for p in probs)
+    r = Parallel(n_jobs=8, verbose=10)(delayed(q_voter.monte_carlo_for_given_p)(p, q_a=q_a, q_c=q_c, c_0=c_0) for p in probs)
 
     # """ simple check of methods."""
     # n = 100000
