@@ -211,9 +211,9 @@ class QVoter:
             float: mean value of concentration for given p
         """
         c = []
-        with open('c50.txt', 'a') as c_file:  
+        with open('c50_5.txt', 'a') as c_file:  
             for i in range(mc_steps):
-                mag, len_mag, concentration = self.simulate_until_stable(min_iterations=1000, max_iterations=100000, ma_value=1000, p=prob, q_a=q_a, q_c=q_c, c=c_0)
+                mag, len_mag, concentration = self.simulate_until_stable(min_iterations=100000, max_iterations=500000, ma_value=1000, p=prob, q_a=q_a, q_c=q_c, c=c_0)
                 c.append(concentration)
 
                 c_file.write(str(prob) + ' ' + str(concentration) + '\n')
@@ -234,13 +234,13 @@ if __name__ == "__main__":
     q_a = 13
     q_c = 10
     # initial concentration of opinion
-    c_0=1
+    c_0=0.999
 
     network = nk.generators.ErdosRenyiGenerator(n, p)
     network = network.generate()
 
     # as in the article
-    probs = np.linspace(0, 0.07, 24)
+    probs = np.linspace(0.755, 0.85, 24)
 
     q_voter = QVoter(network)
 
