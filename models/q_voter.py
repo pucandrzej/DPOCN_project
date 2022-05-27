@@ -213,19 +213,19 @@ class QVoter:
         c = []
         with open('c50_5.txt', 'a') as c_file:  
             for i in range(mc_steps):
-                mag, len_mag, concentration = self.simulate_until_stable(min_iterations=100000, max_iterations=500000, ma_value=1000, p=prob, q_a=q_a, q_c=q_c, c=c_0)
+                _, len_mag, concentration = self.simulate_until_stable(min_iterations=700000, max_iterations=1000000, ma_value=1000, p=prob, q_a=q_a, q_c=q_c, c=c_0)
                 c.append(concentration)
 
-                c_file.write(str(prob) + ' ' + str(concentration) + '\n')
+                c_file.write(str(prob) + ' ' + str(len_mag) + ' ' + str(concentration) + '\n')
 
-                print(prob, concentration)
+                print(prob, len_mag, concentration)
 
         return np.mean(c)
 
 
 if __name__ == "__main__":
     # number of nodes
-    n = 1000
+    n = 10000
     # average degree
     k = 50
     # probability. For Erdos Renyi <k> = np
@@ -234,13 +234,13 @@ if __name__ == "__main__":
     q_a = 13
     q_c = 10
     # initial concentration of opinion
-    c_0=0.999
+    c_0=0.99
 
     network = nk.generators.ErdosRenyiGenerator(n, p)
     network = network.generate()
 
     # as in the article
-    probs = np.linspace(0.755, 0.85, 24)
+    probs = np.linspace(0.85, 0.755, 24)
 
     q_voter = QVoter(network)
 
