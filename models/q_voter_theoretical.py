@@ -23,7 +23,7 @@ def theta_up(b, c):
     """ 
     return b / ((2 * c))
 
-def PA_differential_equations(X, p, k, q_a, q_c):
+def PA_differential_equations(t, X, p, k, q_a, q_c):
     """Differential equations system for PA model. The first equation is the time evolution of proportion of positive opinion
     and the second is the time evolution of proportion of active bonds (bonds between different opinions).
 
@@ -60,7 +60,7 @@ def PA_stable_fixed_points(P, t, k, q_a, q_c, IC):
     return Stable_states
 
 def PA_unstable_fixed_points(C, k, q_a, q_c, IC, interpolate = False, lower_interpolation_threshold = 0.01, upper_interpolation_threshold = 0.5):
-    Stable_states = np.ones(10000)
+    Stable_states = np.ones(np.size(C))
     for i, c in enumerate(C):
         Stable_states[i], _ =  fsolve(PA_algebraic_equations, IC, args = (c, k, q_a, q_c))
     if interpolate:
