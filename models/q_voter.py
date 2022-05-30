@@ -200,7 +200,7 @@ class QVoter:
         # cleaning magnetization
         self.reload_operating_magnetization()
 
-    def monte_carlo_for_given_p(self, prob, mc_steps=10):
+    def monte_carlo_for_given_p(self, prob, mc_steps=10, q_a=4, q_c=10, c_0=1):
         """Method calculating concentration for given p.
 
         Args:
@@ -211,35 +211,50 @@ class QVoter:
             float: mean value of concentration for given p
         """
         c = []
+<<<<<<< HEAD
         with open('c50_4_10_05_ws.txt', 'a') as c_file:  
             for i in range(mc_steps):
                 mag, len_mag, concentration = self.simulate_until_stable(min_iterations=1000, max_iterations=100000, ma_value=1000, p=prob, q_a=4, q_c=10, c=0.5)
+=======
+        with open('c50_5.txt', 'a') as c_file:  
+            for i in range(mc_steps):
+                _, len_mag, concentration = self.simulate_until_stable(min_iterations=700000, max_iterations=1000000, ma_value=1000, p=prob, q_a=q_a, q_c=q_c, c=c_0)
+>>>>>>> 05d4137cb36a6dfbcfe2e71dbaa64abd9911735c
                 c.append(concentration)
 
-                c_file.write(str(prob) + ' ' + str(concentration) + '\n')
+                c_file.write(str(prob) + ' ' + str(len_mag) + ' ' + str(concentration) + '\n')
 
-                print(prob, concentration)
+                print(prob, len_mag, concentration)
 
         return np.mean(c)
 
 
 if __name__ == "__main__":
     # number of nodes
-    n = 1000
+    n = 10000
     # average degree
     k = 150
     # probability. For Erdos Renyi <k> = np
     p = k/n
+    # group of anticonformity
+    q_a = 13
+    q_c = 10
+    # initial concentration of opinion
+    c_0=0.99
 
     network = nk.generators.WattsStrogatzGenerator(n, k/2, 0.5)
     network = network.generate()
 
     # as in the article
+<<<<<<< HEAD
     probs = np.linspace(0, 0.21, 72)
+=======
+    probs = np.linspace(0.85, 0.755, 24)
+>>>>>>> 05d4137cb36a6dfbcfe2e71dbaa64abd9911735c
 
     q_voter = QVoter(network)
 
-    r = Parallel(n_jobs=8, verbose=10)(delayed(q_voter.monte_carlo_for_given_p)(p) for p in probs)
+    r = Parallel(n_jobs=8, verbose=10)(delayed(q_voter.monte_carlo_for_given_p)(p, q_a=q_a, q_c=q_c, c_0=c_0) for p in probs)
 
     # """ simple check of methods."""
     # n = 100000
