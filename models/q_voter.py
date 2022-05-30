@@ -211,9 +211,9 @@ class QVoter:
             float: mean value of concentration for given p
         """
         c = []
-        with open('c50.txt', 'a') as c_file:  
+        with open('c50_4_10_05_ws.txt', 'a') as c_file:  
             for i in range(mc_steps):
-                mag, len_mag, concentration = self.simulate_until_stable(min_iterations=1000, max_iterations=100000, ma_value=1000, p=prob, q_a=4, q_c=10, c=1)
+                mag, len_mag, concentration = self.simulate_until_stable(min_iterations=1000, max_iterations=100000, ma_value=1000, p=prob, q_a=4, q_c=10, c=0.5)
                 c.append(concentration)
 
                 c_file.write(str(prob) + ' ' + str(concentration) + '\n')
@@ -227,15 +227,15 @@ if __name__ == "__main__":
     # number of nodes
     n = 1000
     # average degree
-    k = 50
+    k = 150
     # probability. For Erdos Renyi <k> = np
     p = k/n
 
-    network = nk.generators.ErdosRenyiGenerator(n, p)
+    network = nk.generators.WattsStrogatzGenerator(n, k/2, 0.5)
     network = network.generate()
 
     # as in the article
-    probs = np.linspace(0, 0.07, 24)
+    probs = np.linspace(0, 0.21, 72)
 
     q_voter = QVoter(network)
 
