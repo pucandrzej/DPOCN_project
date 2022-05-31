@@ -25,7 +25,7 @@ def plot_figure(qa, qc, k, c0, ax, graph_type="random"):
             marker = "^"
             color = "y"
 
-        ax.scatter(p, mean_values, marker=marker, color=color, label=f"WS, c0={c0}")
+        ax.scatter(p, mean_values, marker=marker, color=color, label=f"Random, c0={c0}")
 
     elif graph_type == "ws":
         if c0 == 0.5:
