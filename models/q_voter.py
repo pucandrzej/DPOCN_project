@@ -3,7 +3,7 @@ import networkit as nk
 from copy import copy
 import numpy as np
 from typing import Optional
-from numba import jit
+from numba import njit
 
 from matplotlib import pyplot as plt
 from joblib import Parallel, delayed
@@ -56,7 +56,7 @@ class QVoter:
 
     def reload_operating_magnetization(self):
         self.operating_magnetization = []
-
+    @njit
     def influence_choice(self, spinson: int, q: int, type_of_influence: str = 'RND_no_repetitions') -> list:
         """ Method returning spinsons from the network to affect given <spinson (int)> according to given theoretical
             <type_of_influence (int)>
@@ -87,7 +87,7 @@ class QVoter:
         # only if (all are equal to 1) v (all are equal to -1)  <==> abs(sum(group_opinions)) = len(group)
         opinions = [self.operating_opinion[member] for member in group]
         return abs(sum(opinions)) == len(group)
-    @jit
+
     def single_step(self, p: float, q_a: int, q_c: int, type_of_influence: str = 'RND_no_repetitions'):
         """ Single event. According to the paper: https://www.nature.com/articles/s41598-021-97155-0
         Args:
@@ -245,6 +245,8 @@ if __name__ == "__main__":
     probs = np.linspace(0, 0.21, 72)
 
     q_voter = QVoter(network)
+
+    q_voter.monte_carlo_for_given_p(0.1, q_a=q_a, q_c=q_c, c_0=c_0)
 
     r = Parallel(n_jobs=8, verbose=10)(delayed(q_voter.monte_carlo_for_given_p)(p, q_a=q_a, q_c=q_c, c_0=c_0) for p in probs)
 
