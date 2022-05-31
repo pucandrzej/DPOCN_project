@@ -3,6 +3,7 @@ import networkit as nk
 from copy import copy
 import numpy as np
 from typing import Optional
+from numba import jit
 
 from matplotlib import pyplot as plt
 from joblib import Parallel, delayed
@@ -86,7 +87,7 @@ class QVoter:
         # only if (all are equal to 1) v (all are equal to -1)  <==> abs(sum(group_opinions)) = len(group)
         opinions = [self.operating_opinion[member] for member in group]
         return abs(sum(opinions)) == len(group)
-
+    @jit
     def single_step(self, p: float, q_a: int, q_c: int, type_of_influence: str = 'RND_no_repetitions'):
         """ Single event. According to the paper: https://www.nature.com/articles/s41598-021-97155-0
         Args:
@@ -211,15 +212,10 @@ class QVoter:
             float: mean value of concentration for given p
         """
         c = []
-<<<<<<< HEAD
         with open('c50_4_10_05_ws.txt', 'a') as c_file:  
             for i in range(mc_steps):
                 mag, len_mag, concentration = self.simulate_until_stable(min_iterations=1000, max_iterations=100000, ma_value=1000, p=prob, q_a=4, q_c=10, c=0.5)
-=======
-        with open('c50_5.txt', 'a') as c_file:  
-            for i in range(mc_steps):
-                _, len_mag, concentration = self.simulate_until_stable(min_iterations=700000, max_iterations=1000000, ma_value=1000, p=prob, q_a=q_a, q_c=q_c, c=c_0)
->>>>>>> 05d4137cb36a6dfbcfe2e71dbaa64abd9911735c
+
                 c.append(concentration)
 
                 c_file.write(str(prob) + ' ' + str(len_mag) + ' ' + str(concentration) + '\n')
@@ -246,11 +242,7 @@ if __name__ == "__main__":
     network = network.generate()
 
     # as in the article
-<<<<<<< HEAD
     probs = np.linspace(0, 0.21, 72)
-=======
-    probs = np.linspace(0.85, 0.755, 24)
->>>>>>> 05d4137cb36a6dfbcfe2e71dbaa64abd9911735c
 
     q_voter = QVoter(network)
 
