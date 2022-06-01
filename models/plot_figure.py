@@ -3,7 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 
-def plot_figure(qa, qc, k, c0, ax, graph_type="random"):
+def plot_figure(qa, qc, k, c0, ax, graph_type="random", add_label=1):
     if graph_type == "random":
         if c0 == 0.5:
             c0 = "05"
@@ -24,8 +24,10 @@ def plot_figure(qa, qc, k, c0, ax, graph_type="random"):
         elif c0 == "05":
             marker = "^"
             color = "y"
-
-        ax.scatter(p, mean_values, marker=marker, color=color, label=f"Random, c0={c0}")
+        if add_label:
+            ax.scatter(p, mean_values, marker=marker, color=color, label=f"E--R, $c_0={c0}$")
+        else:
+            ax.scatter(p, mean_values, marker=marker, color=color)
 
     elif graph_type == "ws":
         if c0 == 0.5:
@@ -48,5 +50,7 @@ def plot_figure(qa, qc, k, c0, ax, graph_type="random"):
         elif c0 == "05":
             marker = "^"
             color = "g"
-
-        ax.scatter(p, mean_values, marker=marker, color=color, label=f"WS, c0={c0}")
+        if add_label:
+            ax.scatter(p, mean_values, marker=marker, color=color, label=f"W--S, $c_0={c0}$")
+        else:
+            ax.scatter(p, mean_values, marker=marker, color=color)
